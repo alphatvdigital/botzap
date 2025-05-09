@@ -1,5 +1,5 @@
-Flask
+flask
 requests
+openai
 tiktoken
 gunicorn
-openai
