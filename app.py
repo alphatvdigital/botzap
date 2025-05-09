@@ -6,6 +6,7 @@ import tiktoken
 import openai
 
 app = Flask(__name__)
+print("✅ Flask app inicializado com sucesso")  # Log para confirmar que o app subiu
 
 ZAPI_INSTANCE = os.getenv("ZAPI_INSTANCE")
 ZAPI_TOKEN = os.getenv("ZAPI_TOKEN")
@@ -26,7 +27,7 @@ def count_tokens(messages, model="gpt-3.5-turbo"):
 
 # Função para gerar resposta do ChatGPT
 def chatgpt_response(msg):
-    print("🔍 ENV DEBUG - OPENAI_KEY:", OPENAI_KEY)  # Log para verificar se a variável está carregada
+    print("🔍 ENV DEBUG - OPENAI_KEY:", OPENAI_KEY)  # Verifica se a variável está carregada
 
     messages = [{"role": "user", "content": msg}]
     try:
@@ -39,7 +40,7 @@ def chatgpt_response(msg):
         print(f"Tokens usados: {total_tokens}")
         return resposta
     except Exception as e:
-        print("Erro ao acessar ChatGPT:", str(e))
+        print("❌ Erro ao acessar ChatGPT:", str(e))
         return "Desculpe, ocorreu um erro ao processar sua mensagem."
 
 # Função para enviar mensagem pelo WhatsApp usando Z-API
@@ -51,13 +52,15 @@ def send_message_whatsapp(phone, message):
     }
     headers = {'Content-Type': 'application/json'}
     response = requests.post(url, data=json.dumps(payload), headers=headers)
-    print("Resposta da Z-API:", response.text)
+    print("📤 Resposta da Z-API:", response.text)
 
 # Webhook para receber mensagens
 @app.route("/webhook", methods=["POST"])
 def webhook():
+    print("📥 Endpoint /webhook chamado")  # Log importante
+
     data = request.json
-    print("📥 Recebido:", data)
+    print("📦 Recebido:", data)
 
     msg = data.get("text", {}).get("message", "")
     number = data.get("phone", "")
