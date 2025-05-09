@@ -6,7 +6,7 @@ import tiktoken
 import openai
 
 app = Flask(__name__)
-print("✅ Flask app inicializado com sucesso")  # Log para confirmar que o app subiu
+print("✅ Flask app inicializado com sucesso")
 
 ZAPI_INSTANCE = os.getenv("ZAPI_INSTANCE")
 ZAPI_TOKEN = os.getenv("ZAPI_TOKEN")
@@ -19,15 +19,15 @@ def count_tokens(messages, model="gpt-3.5-turbo"):
     encoding = tiktoken.encoding_for_model(model)
     total_tokens = 0
     for message in messages:
-        total_tokens += 4  # tokens de estrutura da mensagem
+        total_tokens += 4
         for key, value in message.items():
             total_tokens += len(encoding.encode(value))
-    total_tokens += 2  # tokens finais
+    total_tokens += 2
     return total_tokens
 
 # Função para gerar resposta do ChatGPT
 def chatgpt_response(msg):
-    print("🔍 ENV DEBUG - OPENAI_KEY:", OPENAI_KEY)  # Verifica se a variável está carregada
+    print("🔍 ENV DEBUG - OPENAI_KEY:", OPENAI_KEY)
 
     messages = [{"role": "user", "content": msg}]
     try:
@@ -43,21 +43,24 @@ def chatgpt_response(msg):
         print("❌ Erro ao acessar ChatGPT:", str(e))
         return "Desculpe, ocorreu um erro ao processar sua mensagem."
 
-# Função para enviar mensagem pelo WhatsApp usando Z-API
+# ✅ Função corrigida para enviar mensagem com o token da Z-API
 def send_message_whatsapp(phone, message):
-    url = f"https://api.z-api.io/instances/{ZAPI_INSTANCE}/token/{ZAPI_TOKEN}/send-text"
+    url = f"https://api.z-api.io/instances/{ZAPI_INSTANCE}/send-text"
     payload = {
         "phone": phone,
         "message": message
     }
-    headers = {'Content-Type': 'application/json'}
+    headers = {
+        'Content-Type': 'application/json',
+        'Client-Token': ZAPI_TOKEN  # ← esse cabeçalho era o que faltava
+    }
     response = requests.post(url, data=json.dumps(payload), headers=headers)
     print("📤 Resposta da Z-API:", response.text)
 
-# Webhook para receber mensagens
+# Webhook
 @app.route("/webhook", methods=["POST"])
 def webhook():
-    print("📥 Endpoint /webhook chamado")  # Log importante
+    print("📥 Endpoint /webhook chamado")
 
     data = request.json
     print("📦 Recebido:", data)
@@ -75,8 +78,5 @@ def webhook():
     return "OK", 200
 
 if __name__ == "__main__":
-    import socket
-    print("🔧 IP externo:", socket.gethostbyname(socket.gethostname()))
-    
     port = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=port, debug=False, use_reloader=False)
