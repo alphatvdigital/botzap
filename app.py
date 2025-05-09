@@ -25,7 +25,7 @@ def count_tokens(messages, model="gpt-3.5-turbo"):
     total_tokens += 2
     return total_tokens
 
-# Função para gerar resposta do ChatGPT (com segurança extra contra null)
+# ✅ Função com verificação segura da resposta da IA
 def chatgpt_response(msg):
     print("🔍 ENV DEBUG - OPENAI_KEY:", OPENAI_KEY)
 
@@ -35,10 +35,17 @@ def chatgpt_response(msg):
             model="gpt-3.5-turbo",
             messages=messages
         )
-        resposta = response.choices[0].message.content if response.choices and response.choices[0].message else None
-        total_tokens = count_tokens(messages + [{"role": "assistant", "content": resposta or ''}])
-        print(f"Tokens usados: {total_tokens}")
-        return resposta
+
+        # Verifica se a resposta é válida
+        if response.choices and hasattr(response.choices[0], "message") and response.choices[0].message and response.choices[0].message.content:
+            resposta = response.choices[0].message.content.strip()
+            total_tokens = count_tokens(messages + [{"role": "assistant", "content": resposta}])
+            print(f"Tokens usados: {total_tokens}")
+            return resposta
+        else:
+            print("⚠️ Resposta vazia da IA")
+            return None
+
     except Exception as e:
         print("❌ Erro ao acessar ChatGPT:", str(e))
         return None
