@@ -25,7 +25,7 @@ def count_tokens(messages, model="gpt-3.5-turbo"):
     total_tokens += 2
     return total_tokens
 
-# Função para gerar resposta do ChatGPT
+# Função para gerar resposta do ChatGPT (com segurança extra contra null)
 def chatgpt_response(msg):
     print("🔍 ENV DEBUG - OPENAI_KEY:", OPENAI_KEY)
 
@@ -35,8 +35,8 @@ def chatgpt_response(msg):
             model="gpt-3.5-turbo",
             messages=messages
         )
-        resposta = response.choices[0].message.content
-        total_tokens = count_tokens(messages + [{"role": "assistant", "content": resposta}])
+        resposta = response.choices[0].message.content if response.choices and response.choices[0].message else None
+        total_tokens = count_tokens(messages + [{"role": "assistant", "content": resposta or ''}])
         print(f"Tokens usados: {total_tokens}")
         return resposta
     except Exception as e:
