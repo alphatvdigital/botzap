@@ -26,6 +26,8 @@ def count_tokens(messages, model="gpt-3.5-turbo"):
 
 # Função para gerar resposta do ChatGPT
 def chatgpt_response(msg):
+    print("🔍 ENV DEBUG - OPENAI_KEY:", OPENAI_KEY)  # Log para verificar se a variável está carregada
+
     messages = [{"role": "user", "content": msg}]
     try:
         response = openai.chat.completions.create(
@@ -55,12 +57,13 @@ def send_message_whatsapp(phone, message):
 @app.route("/webhook", methods=["POST"])
 def webhook():
     data = request.json
-    print("Recebido:", data)
+    print("📥 Recebido:", data)
 
     msg = data.get("text", {}).get("message", "")
     number = data.get("phone", "")
 
     if not msg or not number:
+        print("⚠️ Dados inválidos recebidos")
         return "Dados inválidos", 400
 
     resposta = chatgpt_response(msg)
