@@ -41,9 +41,9 @@ def chatgpt_response(msg):
         return resposta
     except Exception as e:
         print("❌ Erro ao acessar ChatGPT:", str(e))
-        return "Desculpe, ocorreu um erro ao processar sua mensagem."
+        return None
 
-# Função para enviar mensagem via Z-API
+# Envia mensagem via Z-API
 def send_message_whatsapp(phone, message):
     url = f"https://api.z-api.io/instances/{ZAPI_INSTANCE}/token/{ZAPI_TOKEN}/send-text"
     payload = {
@@ -56,7 +56,7 @@ def send_message_whatsapp(phone, message):
     response = requests.post(url, data=json.dumps(payload), headers=headers)
     print("📤 Resposta da Z-API:", response.text)
 
-# Webhook
+# Webhook principal
 @app.route("/webhook", methods=["POST"])
 def webhook():
     print("📥 Endpoint /webhook chamado")
@@ -72,7 +72,11 @@ def webhook():
         return "OK", 200
 
     resposta = chatgpt_response(msg)
-    send_message_whatsapp(number, resposta)
+
+    if resposta:
+        send_message_whatsapp(number, resposta)
+    else:
+        print("⚠️ Nenhuma resposta gerada pela IA — mensagem não enviada")
 
     return "OK", 200
 
