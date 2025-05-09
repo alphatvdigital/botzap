@@ -3,7 +3,7 @@ from flask import Flask, request, jsonify
 import requests
 import json
 import tiktoken
-import openai
+from openai import OpenAI
 
 app = Flask(__name__)
 print("✅ Flask app inicializado com sucesso")
@@ -12,7 +12,7 @@ ZAPI_INSTANCE = os.getenv("ZAPI_INSTANCE")
 ZAPI_TOKEN = os.getenv("ZAPI_TOKEN")
 OPENAI_KEY = os.getenv("OPENAI_KEY")
 
-openai.api_key = OPENAI_KEY
+client = OpenAI(api_key=OPENAI_KEY)
 
 # Função para contar tokens usados
 def count_tokens(messages, model="gpt-3.5-turbo"):
@@ -25,19 +25,19 @@ def count_tokens(messages, model="gpt-3.5-turbo"):
     total_tokens += 2
     return total_tokens
 
-# ✅ Função corrigida para compatibilidade com OpenAI SDK >= 1.0
+# Compatível com OpenAI SDK >= 1.0.0
 def chatgpt_response(msg):
     print("🔍 ENV DEBUG - OPENAI_KEY:", OPENAI_KEY)
 
     messages = [{"role": "user", "content": msg}]
     try:
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=messages
         )
 
-        if response and response.choices and response.choices[0].message and response.choices[0].message.get("content"):
-            resposta = response.choices[0].message["content"].strip()
+        if response and response.choices and response.choices[0].message.content:
+            resposta = response.choices[0].message.content.strip()
             total_tokens = count_tokens(messages + [{"role": "assistant", "content": resposta}])
             print(f"Tokens usados: {total_tokens}")
             return resposta
