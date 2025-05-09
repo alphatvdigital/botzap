@@ -43,7 +43,7 @@ def chatgpt_response(msg):
         print("❌ Erro ao acessar ChatGPT:", str(e))
         return "Desculpe, ocorreu um erro ao processar sua mensagem."
 
-# ✅ Função corrigida com token na URL
+# ✅ Função corrigida: token vai só na URL, não nos headers
 def send_message_whatsapp(phone, message):
     url = f"https://api.z-api.io/instances/{ZAPI_INSTANCE}/token/{ZAPI_TOKEN}/send-text"
     payload = {
@@ -51,7 +51,7 @@ def send_message_whatsapp(phone, message):
         "message": message
     }
     headers = {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json'  # ✅ Sem 'Client-Token' aqui
     }
     response = requests.post(url, data=json.dumps(payload), headers=headers)
     print("📤 Resposta da Z-API:", response.text)
