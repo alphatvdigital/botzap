@@ -25,7 +25,7 @@ def count_tokens(messages, model="gpt-3.5-turbo"):
     total_tokens += 2
     return total_tokens
 
-# Função segura e compatível com OpenAI SDK >=1.0
+# Função compatível com OpenAI SDK >= 1.0
 def chatgpt_response(msg):
     print("🔍 ENV DEBUG - OPENAI_KEY:", OPENAI_KEY)
 
@@ -62,7 +62,7 @@ def send_message_whatsapp(phone, message):
     response = requests.post(url, data=json.dumps(payload), headers=headers)
     print("📤 Resposta da Z-API:", response.text)
 
-# Webhook
+# Webhook principal
 @app.route("/webhook", methods=["POST"])
 def webhook():
     print("📥 Endpoint /webhook chamado")
@@ -79,10 +79,11 @@ def webhook():
 
     resposta = chatgpt_response(msg)
 
-    if resposta:
+    # ✅ Valida se resposta não está vazia ou nula
+    if resposta and resposta.strip():
         send_message_whatsapp(number, resposta)
     else:
-        print("⚠️ Nenhuma resposta gerada pela IA — mensagem não enviada")
+        print("⚠️ Resposta inválida ou vazia — não enviada para o WhatsApp")
 
     return "OK", 200
 
