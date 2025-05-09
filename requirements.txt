@@ -2,3 +2,4 @@ Flask
 requests
 tiktoken
 gunicorn
+openai
