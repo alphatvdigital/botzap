@@ -25,7 +25,7 @@ def count_tokens(messages, model="gpt-3.5-turbo"):
     total_tokens += 2
     return total_tokens
 
-# Compatível com OpenAI SDK >= 1.0.0
+# Função segura para obter resposta da IA
 def chatgpt_response(msg):
     print("🔍 ENV DEBUG - OPENAI_KEY:", OPENAI_KEY)
 
@@ -36,6 +36,7 @@ def chatgpt_response(msg):
             messages=messages
         )
 
+        # ✅ Aqui é onde corrigimos: usamos .content
         if response and response.choices and response.choices[0].message.content:
             resposta = response.choices[0].message.content.strip()
             total_tokens = count_tokens(messages + [{"role": "assistant", "content": resposta}])
@@ -62,7 +63,7 @@ def send_message_whatsapp(phone, message):
     response = requests.post(url, data=json.dumps(payload), headers=headers)
     print("📤 Resposta da Z-API:", response.text)
 
-# Webhook principal
+# Webhook
 @app.route("/webhook", methods=["POST"])
 def webhook():
     print("📥 Endpoint /webhook chamado")
