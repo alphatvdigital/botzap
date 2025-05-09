@@ -75,5 +75,8 @@ def webhook():
     return "OK", 200
 
 if __name__ == "__main__":
+    import socket
+    print("🔧 IP externo:", socket.gethostbyname(socket.gethostname()))
+    
     port = int(os.environ.get("PORT", 8080))
-    app.run(debug=False, host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=port, debug=False, use_reloader=False)
