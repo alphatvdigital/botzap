@@ -3,18 +3,17 @@ from flask import Flask, request, jsonify
 import requests
 import json
 import tiktoken
-from openai import OpenAI
+import openai
 
 app = Flask(__name__)
-print("✅ Flask app inicializado com sucesso")
 
 ZAPI_INSTANCE = os.getenv("ZAPI_INSTANCE")
 ZAPI_TOKEN = os.getenv("ZAPI_TOKEN")
 OPENAI_KEY = os.getenv("OPENAI_KEY")
 
-client = OpenAI(api_key=OPENAI_KEY)
+openai.api_key = OPENAI_KEY  # Usar o novo padrão da lib openai>=1.0.0
 
-# Função para contar tokens usados
+# Função para contar tokens
 def count_tokens(messages, model="gpt-3.5-turbo"):
     encoding = tiktoken.encoding_for_model(model)
     total_tokens = 0
@@ -25,58 +24,44 @@ def count_tokens(messages, model="gpt-3.5-turbo"):
     total_tokens += 2
     return total_tokens
 
-# Função compatível com OpenAI SDK >= 1.0
+# Função para resposta do ChatGPT
 def chatgpt_response(msg):
-    print("🔍 ENV DEBUG - OPENAI_KEY:", OPENAI_KEY)
-
-    messages = [{"role": "user", "content": msg}]
     try:
-        response = client.chat.completions.create(
+        messages = [{"role": "user", "content": msg}]
+        response = openai.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=messages
         )
-
-        if response and response.choices and response.choices[0].message.content:
-            resposta = str(response.choices[0].message.content).strip()
-            total_tokens = count_tokens(messages + [{"role": "assistant", "content": resposta}])
-            print(f"Tokens usados: {total_tokens}")
-            return resposta
-        else:
-            print("⚠️ Resposta vazia da IA")
-            return None
-
+        reply = response.choices[0].message.content.strip()
+        total_tokens = count_tokens(messages + [{"role": "assistant", "content": reply}])
+        print(f"Tokens usados: {total_tokens}")
+        return reply
     except Exception as e:
-        print("❌ Erro ao acessar ChatGPT:", str(e))
+        print("❌ Erro ao acessar ChatGPT:", e)
         return None
 
-# Função com log detalhado de envio via Z-API
+# Função para enviar mensagem via Z-API
 def send_message_whatsapp(phone, message):
     url = f"https://api.z-api.io/instances/{ZAPI_INSTANCE}/token/{ZAPI_TOKEN}/send-text"
     payload = {
         "phone": phone,
         "message": message
     }
-    headers = {
-        'Content-Type': 'application/json'
-    }
+    headers = {'Content-Type': 'application/json'}
 
-    print("📤 Enviando para Z-API:")
-    print("➡️ URL:", url)
-    print("➡️ Payload:", json.dumps(payload, ensure_ascii=False))
-    print("➡️ Headers:", headers)
+    print("\n📤 Enviando para Z-API:")
+    print(f"➡️ URL: {url}")
+    print(f"➡️ Payload: {json.dumps(payload)}")
+    print(f"➡️ Headers: {headers}")
 
-    try:
-        response = requests.post(url, data=json.dumps(payload), headers=headers)
-        print("📤 Resposta da Z-API:", response.text)
-    except Exception as e:
-        print("❌ Erro ao tentar enviar para Z-API:", str(e))
+    response = requests.post(url, headers=headers, json=payload)
+    print("📤 Resposta da Z-API:", response.text)
 
 # Webhook principal
 @app.route("/webhook", methods=["POST"])
 def webhook():
-    print("📥 Endpoint /webhook chamado")
-
     data = request.json
+    print("\n📥 Endpoint /webhook chamado")
     print("📦 Recebido:", data)
 
     msg = data.get("text", {}).get("message")
@@ -84,17 +69,17 @@ def webhook():
 
     if not msg or not number:
         print("⚠️ Ignorado: sem texto ou número")
-        return "OK", 200
+        return "Dados inválidos", 400
 
     resposta = chatgpt_response(msg)
+    if not resposta:
+        print("⚠️ Nenhuma resposta gerada pela IA — mensagem não enviada")
+        return "Erro ao gerar resposta", 200
 
-    if resposta and resposta.strip():
-        send_message_whatsapp(number, resposta)
-    else:
-        print("⚠️ Resposta inválida ou vazia — não enviada para o WhatsApp")
-
+    send_message_whatsapp(number, resposta)
     return "OK", 200
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
-    app.run(host="0.0.0.0", port=port, debug=False, use_reloader=False)
+    print("✅ Flask app inicializado com sucesso")
+    app.run(host="0.0.0.0", port=port)
