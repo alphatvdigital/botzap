@@ -11,7 +11,7 @@ ZAPI_INSTANCE = os.getenv("ZAPI_INSTANCE")
 ZAPI_TOKEN = os.getenv("ZAPI_TOKEN")
 OPENAI_KEY = os.getenv("OPENAI_KEY")
 
-# Função para contar tokens usados
+# Função para contar tokens
 def count_tokens(messages, model="gpt-3.5-turbo"):
     encoding = tiktoken.encoding_for_model(model)
     total_tokens = 0
@@ -25,7 +25,6 @@ def count_tokens(messages, model="gpt-3.5-turbo"):
 # Função para enviar resposta do ChatGPT
 def chatgpt_response(msg):
     openai.api_key = OPENAI_KEY
-
     messages = [{"role": "user", "content": msg}]
     try:
         response = openai.chat.completions.create(
@@ -40,44 +39,50 @@ def chatgpt_response(msg):
         print(f"[ERRO] Erro ao acessar ChatGPT: {e}\n")
         return None
 
-# Função para enviar mensagem pelo WhatsApp (Z-API)
+# Função para enviar mensagem via Z-API
+# Header 'Client-Token' removido conforme documentação
 def send_message_whatsapp(phone, message):
+    if not phone or not message:
+        print("[ERRO] Número ou mensagem vazios. Nada enviado.")
+        return
+
+    if "-group" in phone:
+        print("[INFO] Ignorado: grupo não suportado.")
+        return
+
     url = f"https://api.z-api.io/instances/{ZAPI_INSTANCE}/token/{ZAPI_TOKEN}/send-text"
-    payload = {
-        "phone": phone,
-        "message": message
-    }
-    headers = {'Content-Type': 'application/json'}
+    payload = {"phone": phone, "message": message}
+    headers = {'Content-Type': 'application/json'}  # Só Content-Type
 
-    print("[Z-API] Enviando para Z-API:")
+    print("[Z-API] Enviando:")
     print(f"[Z-API] URL: {url}")
-    print(f"[Z-API] Payload: {json.dumps(payload)}")
+    print(f"[Z-API] Payload: {json.dumps(payload, ensure_ascii=False)}")
 
-    response = requests.post(url, data=json.dumps(payload), headers=headers)
+    response = requests.post(url, json=payload, headers=headers)
     print(f"[Z-API] Resposta: {response.text}")
 
-# Webhook
 @app.route("/webhook", methods=["POST"])
 def webhook():
-    print("\n[Webhook] Endpoint /webhook chamado")
+    print("\n[Webhook] Endpoint chamado")
     data = request.json
-    print(f"[Webhook] Recebido: {json.dumps(data, indent=4)}")
+    print(f"[Webhook] Recebido: {json.dumps(data, indent=4, ensure_ascii=False)}")
 
     msg = data.get("text", {}).get("message", "")
     number = data.get("phone", "")
     is_group = data.get("isGroup", False)
 
+    # Ignora grupos e mensagens vazias
     if not msg or not number or is_group:
-        print("[INFO] Ignorado: sem texto ou número, ou é grupo.")
-        return "Ignorado", 200
+        print("[INFO] Ignorado: sem texto, número vazio ou grupo.")
+        return "OK", 200
 
-    print(f"[DEBUG] OPENAI_KEY: {OPENAI_KEY[:8]}...")
+    print(f"[DEBUG] OPENAI_KEY: {OPENAI_KEY[:8]}... (oculto)")
 
     resposta = chatgpt_response(msg)
     if resposta:
         send_message_whatsapp(number, resposta)
     else:
-        print("[INFO] Nenhuma resposta gerada pela IA — mensagem não enviada")
+        print("[INFO] Nenhuma resposta da IA — mensagem não enviada")
 
     return "OK", 200
 
