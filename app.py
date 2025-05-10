@@ -3,6 +3,7 @@ from flask import Flask, request, jsonify
 import requests
 import json
 import tiktoken
+import openai
 
 app = Flask(__name__)
 
@@ -23,68 +24,64 @@ def count_tokens(messages, model="gpt-3.5-turbo"):
 
 # Função para enviar resposta do ChatGPT
 def chatgpt_response(msg):
-    import openai
-    from openai import OpenAI
+    openai.api_key = OPENAI_KEY
 
-    client = OpenAI(api_key=OPENAI_KEY)
-
+    messages = [{"role": "user", "content": msg}]
     try:
-        messages = [{"role": "user", "content": msg}]
-        completion = client.chat.completions.create(
+        response = openai.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=messages
         )
-        resposta = completion.choices[0].message.content
+        resposta = response.choices[0].message.content
         total_tokens = count_tokens(messages + [{"role": "assistant", "content": resposta}])
-        print(f"Tokens usados: {total_tokens}")
+        print(f"[TOKENS] Tokens usados: {total_tokens}")
         return resposta
     except Exception as e:
-        print("\n\n❌ Erro ao acessar ChatGPT:", e, "\n\n")
+        print(f"[ERRO] Erro ao acessar ChatGPT: {e}\n")
         return None
 
 # Função para enviar mensagem pelo WhatsApp (Z-API)
 def send_message_whatsapp(phone, message):
-    url = f"https://api.z-api.io/instances/{ZAPI_INSTANCE}/token/{ZAPI_TOKEN}/send-messages"
+    url = f"https://api.z-api.io/instances/{ZAPI_INSTANCE}/token/{ZAPI_TOKEN}/send-text"
     payload = {
         "phone": phone,
         "message": message
     }
     headers = {'Content-Type': 'application/json'}
 
-    print("\n\u2709\ufe0f Enviando para Z-API:")
-    print("\u27a1\ufe0f URL:", url)
-    print("\u27a1\ufe0f Payload:", json.dumps(payload, ensure_ascii=False))
-    print("\u27a1\ufe0f Headers:", headers)
+    print("[Z-API] Enviando para Z-API:")
+    print(f"[Z-API] URL: {url}")
+    print(f"[Z-API] Payload: {json.dumps(payload)}")
 
-    response = requests.post(url, json=payload, headers=headers)
-    print("\n\ud83d\udce4 Resposta da Z-API:", response.text)
+    response = requests.post(url, data=json.dumps(payload), headers=headers)
+    print(f"[Z-API] Resposta: {response.text}")
 
 # Webhook
 @app.route("/webhook", methods=["POST"])
 def webhook():
+    print("\n[Webhook] Endpoint /webhook chamado")
     data = request.json
-    print("\n\ud83d\udce6 Endpoint /webhook chamado")
-    print("\n\ud83d\udce6 Recebido:", json.dumps(data, indent=4, ensure_ascii=False))
+    print(f"[Webhook] Recebido: {json.dumps(data, indent=4)}")
 
     msg = data.get("text", {}).get("message", "")
     number = data.get("phone", "")
     is_group = data.get("isGroup", False)
 
     if not msg or not number or is_group:
-        print("\n⚠️ Ignorado: sem texto ou número, ou é grupo.")
-        return "OK", 200
+        print("[INFO] Ignorado: sem texto ou número, ou é grupo.")
+        return "Ignorado", 200
 
-    print("\n\ud83d\udd0d ENV DEBUG - OPENAI_KEY:", OPENAI_KEY)
+    print(f"[DEBUG] OPENAI_KEY: {OPENAI_KEY[:8]}...")
 
     resposta = chatgpt_response(msg)
     if resposta:
         send_message_whatsapp(number, resposta)
     else:
-        print("\n⚠️ Nenhuma resposta gerada pela IA — mensagem não enviada")
+        print("[INFO] Nenhuma resposta gerada pela IA — mensagem não enviada")
 
     return "OK", 200
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
-    print("\n✅ Flask app inicializado com sucesso")
+    print("\n[INFO] Inicializando app Flask...")
     app.run(host="0.0.0.0", port=port)
